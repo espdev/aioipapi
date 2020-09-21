@@ -3,14 +3,18 @@
 import asyncio
 from collections import abc
 from ipaddress import IPv4Address, IPv6Address
+from http import HTTPStatus
 from typing import Optional, Sequence, Set, Union, Type, Iterable, AsyncIterable, AsyncGenerator
 from types import TracebackType
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientError
 import yarl
+import aioitertools
 
-from aioipapi import _constants as constants
 from aioipapi._logging import logger
+from aioipapi import _constants as constants
+from aioipapi._utils import chunker
+from aioipapi._exceptions import IpApiError
 
 
 _IPType = Union[IPv4Address, IPv6Address, str]
@@ -55,8 +59,10 @@ class IpApiClient:
         self._session = session
         self._own_session = own_session
 
-        self._x_rl = constants.MAX_RATE
-        self._x_ttl = 0
+        self._json_rl = constants.JSON_RATE_LIMIT
+        self._json_ttl = 0
+        self._batch_rl = constants.BATCH_RATE_LIMIT
+        self._batch_ttl = 0
 
     def __enter__(self) -> None:
         raise TypeError("Use 'async with' statement instead")
@@ -108,34 +114,94 @@ class IpApiClient:
         if lang and not isinstance(lang, str):
             raise TypeError(f"'lang' argument must be a string")
 
-        if not self._key and self._x_rl == 0:
-            logger.debug("Waiting for %d seconds by rate limit", self._x_ttl)
-            await asyncio.sleep(self._x_ttl)
-
-        fields = fields or self._fields
-        lang = lang or self._lang
-        url = self._make_url(endpoint, fields, lang, self._key)
-
         if batch:
+            rl = self._batch_rl
+            ttl = self._batch_ttl
             data = ip
             method = 'POST'
         else:
+            rl = self._json_rl
+            ttl = self._json_ttl
             data = None
             method = 'GET'
 
+        if not self._key and rl == 0:
+            logger.debug("Waiting for %d seconds by rate limit", ttl)
+            await asyncio.sleep(ttl)
+
+        fields = fields or self._fields
+        lang = lang or self._lang
+        url = self._make_url(endpoint, fields, lang)
+
         async with self._session.request(method, url, json=data) as resp:
+            headers = resp.headers
+            rl = int(headers['X-Rl'])
+            ttl = int(headers['X-Ttl'])
+
+            if batch:
+                self._batch_rl = rl
+                self._batch_ttl = ttl
+            else:
+                self._json_rl = rl
+                self._json_ttl = ttl
+
             assert resp.status == 200, resp.status
             result = await resp.json()
 
         return result
 
-    async def locator(self, ips: _IPsType):
-        """Return async generator for locating IPs
+    async def locator(self,
+                      ips: _IPsType,
+                      *,
+                      fields: _FieldsType = None,
+                      lang: Optional[str] = None):
+        """Return async generator for IPs location
         """
 
-        raise NotImplementedError
+        if not isinstance(ips, (abc.Iterable, abc.AsyncIterable)):
+            raise TypeError("'ips' argument must be an iterable or async iterable")
 
-    def _make_url(self, endpoint, fields, lang, key) -> str:
+        if fields and not isinstance(fields, (abc.Sequence, abc.Set)):
+            raise TypeError("'fields' argument must be a sequence or set")
+
+        if lang and not isinstance(lang, str):
+            raise TypeError(f"'lang' argument must be a string")
+
+        fields = fields or self._fields
+        lang = lang or self._lang
+
+        url = self._make_url(constants.BATCH_ENDPOINT, fields, lang)
+        batch_size = constants.BATCH_SIZE
+
+        async for ips_batch in chunker(ips, chunk_size=constants.BATCH_SIZE):
+            while True:
+                # TODO: use tenacity based retrying
+                await self._wait_for_rate_limit(self._batch_rl, self._batch_ttl)
+
+                try:
+                    async with self._session.post(url, json=ips_batch) as resp:
+                        self._batch_rl, self._batch_ttl = self.get_rl_ttl(
+                            resp.headers, max_rl=constants.BATCH_RATE_LIMIT)
+
+                        status = resp.status
+
+                        if status == HTTPStatus.OK:
+                            results = await resp.json()
+                            async for result in aioitertools.iter(results):
+                                yield result
+                            break
+                        elif status == HTTPStatus.TOO_MANY_REQUESTS:
+                            logger.error("Too many requests (%d)", status)
+                            continue
+                        elif status == HTTPStatus.UNPROCESSABLE_ENTITY:
+                            raise IpApiError(f"Batch size {batch_size} is too large (HTTP {status})")
+                        else:
+                            raise IpApiError(f"HTTP {status} error occurred")
+
+                except ClientError as err:
+                    raise IpApiError(f"Client connection error: {repr(err)}") from err
+
+    def _make_url(self, endpoint, fields, lang) -> str:
         url = self._base_url / endpoint
 
         if fields:
@@ -143,18 +209,31 @@ class IpApiClient:
             url %= {'fields': ','.join(fields)}
         if lang:
             url %= {'lang': lang}
-        if key:
+        if self._key:
             url = url.with_scheme('https')
-            url %= {'key': key}
+            url %= {'key': self._key}
 
         return url
+
+    async def _wait_for_rate_limit(self, rl, ttl):
+        if self._key:
+            return
+        if rl == 0:
+            logger.warning("API limit is reached. Waiting for %d seconds by rate limit.", ttl)
+            await asyncio.sleep(ttl)
+
+    @staticmethod
+    def get_rl_ttl(headers, max_rl):
+        rl = int(headers.get('X-Rl', f'{max_rl}'))
+        ttl = int(headers.get('X-Ttl', '0'))
+
+        return rl, ttl
 
 
 async def main():
     async with IpApiClient(lang='ru') as client:
-        res = await client.location()
-
-    print(res)
+        async for res in client.locator(['5.18.247.243'] * 5):
+            print(res)
 
 if __name__ == '__main__':
     asyncio.run(main())

@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import sys
-
-
 BASE_URL = 'http://ip-api.com/'
 
 JSON_ENDPOINT = 'json'
-XML_ENDPOINT = 'xml'
-CSV_ENDPOINT = 'csv'
-NEWLINE_ENDPOINT = 'line'
 BATCH_ENDPOINT = 'batch'
 
 FIELDS = {
@@ -56,4 +50,5 @@ LANGS = {
 BATCH_SIZE = 100
 REQUEST_TIMEOUT = 60
 
-MAX_RATE = sys.maxsize
+JSON_RATE_LIMIT = 45
+BATCH_RATE_LIMIT = 15

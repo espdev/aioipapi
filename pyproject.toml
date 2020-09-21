@@ -18,6 +18,7 @@ classifiers = [
 python = "^3.6"
 aiohttp = "^3.6.2"
 yarl = "^1.5.1"
+aioitertools = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0.2"
