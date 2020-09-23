@@ -4,10 +4,11 @@ import asyncio
 from collections import abc
 from ipaddress import IPv4Address, IPv6Address
 from http import HTTPStatus
-from typing import Optional, Sequence, Set, Union, Type, Iterable, AsyncIterable, AsyncGenerator
+from typing import Optional, Sequence, Set, Dict, Any, Union, Type, Iterable, AsyncIterable
 from types import TracebackType
 
 import aiohttp
+import aiohttp.helpers
 import yarl
 import aioitertools
 import tenacity
@@ -25,7 +26,10 @@ _FieldsType = Optional[Union[Sequence[str], Set[str]]]
 
 
 class IpApiClient:
-    """
+    """IP-API asynchronous http client to perform geo-location
+
+    Asynchronous http client for https://ip-api.com/ web-service.
+
     """
 
     def __init__(self,
@@ -67,12 +71,8 @@ class IpApiClient:
         self._batch_rl = constants.BATCH_RATE_LIMIT
         self._batch_ttl = 0
 
-        self._retrying = tenacity.AsyncRetrying(
-            reraise=True,
-            retry=tenacity.retry_if_exception_type(ClientError),
-            stop=tenacity.stop_after_attempt(retry_attempts),
-            wait=tenacity.wait_fixed(retry_delay)
-        )
+        self._retry_attempts = retry_attempts
+        self._retry_delay = retry_delay
 
     def __enter__(self) -> None:
         raise TypeError("Use 'async with' statement instead")
@@ -164,8 +164,20 @@ class IpApiClient:
                       ips: _IPsType,
                       *,
                       fields: _FieldsType = None,
-                      lang: Optional[str] = None):
-        """Return async generator for IPs location
+                      lang: Optional[str] = None,
+                      timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                      ) -> AsyncIterable[Dict[str, Any]]:
+        """Async generator for locating IPs from iterable or async iterable
+
+        The method always uses batch API: https://ip-api.com/docs/api:batch
+
+        Parameters:
+
+        :param ips: The iterable or async iterable of IPs or dicts with additional info (see API docs)
+        :param fields: The sequence or set of returned fields in the result
+        :param lang: The language of the result
+        :param timeout: The timeout of the whole request to API
+        :return: async generator of results for every IP
         """
 
         if not isinstance(ips, (abc.Iterable, abc.AsyncIterable)):
@@ -179,17 +191,18 @@ class IpApiClient:
         lang = lang or self._lang
         url = self._make_url(constants.BATCH_ENDPOINT, fields, lang)
 
+        retrying = self._create_retrying(self._retry_attempts, self._retry_delay)
+
         async for ips_batch in chunker(ips, chunk_size=constants.BATCH_SIZE):
-            async for attempt in self._retrying:
+            async for attempt in retrying:
                 with attempt:
                     while True:  # retrying loop when "too many requests" without API key
                         await self._wait_for_rate_limit(self._batch_rl, self._batch_ttl)
 
                         try:
-                            async with self._session.post(url, json=ips_batch) as resp:
+                            async with self._session.post(url, json=ips_batch, timeout=timeout) as resp:
                                 self._update_batch_rl_ttl(resp.headers)
                                 self._check_http_status(resp.status)
-
                                 results = await resp.json()
 
                         except TooManyRequests as err:
@@ -205,6 +218,15 @@ class IpApiClient:
                         async for result in aioitertools.iter(results):
                             yield result
                         break
+
+    @staticmethod
+    def _create_retrying(attempts, delay):
+        return tenacity.AsyncRetrying(
+            reraise=True,
+            retry=tenacity.retry_if_exception_type(ClientError),
+            stop=tenacity.stop_after_attempt(attempts),
+            wait=tenacity.wait_fixed(delay)
+        )
 
     def _make_url(self, endpoint, fields, lang) -> str:
         url = self._base_url / endpoint
