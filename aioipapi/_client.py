@@ -17,7 +17,7 @@ from aioipapi._logging import logger
 from aioipapi import _constants as constants
 from aioipapi._config import config
 from aioipapi._utils import chunker
-from aioipapi._exceptions import ClientError, TooManyRequests, TooLargeBatchSize, AuthError, HttpError
+from aioipapi._exceptions import ClientError, HttpError, TooManyRequests, TooLargeBatchSize, AuthError
 
 
 _IPType = Union[IPv4Address, IPv6Address, str]
@@ -223,14 +223,18 @@ class IpApiClient:
             return True, rl, ttl
         elif status == HTTPStatus.TOO_MANY_REQUESTS:
             if self._key:
-                raise TooManyRequests(f"Too many requests with using API key ({status})")
+                raise TooManyRequests(
+                    f"Too many requests with using API key ({status})", status=status)
             return False, rl, ttl
         elif status == HTTPStatus.UNPROCESSABLE_ENTITY:
-            raise TooLargeBatchSize(f"Batch size is too large ({status})")
+            raise TooLargeBatchSize(
+                f"Batch size is too large ({status})", status=status)
         elif status == HTTPStatus.FORBIDDEN:
-            raise AuthError(f"Forbidden. Please check your API key ({status})")
+            raise AuthError(
+                f"Forbidden. Please check your API key ({status})", status=status)
         else:
-            raise HttpError(f"HTTP error occurred ({status})", status=status)
+            raise HttpError(
+                f"HTTP error occurred ({status})", status=status)
 
     async def _fetch_json(self, url, timeout):
         await self._wait_for_rate_limit(self._json_rl, self._json_ttl)
