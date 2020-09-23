@@ -15,6 +15,7 @@ import tenacity
 
 from aioipapi._logging import logger
 from aioipapi import _constants as constants
+from aioipapi._config import config
 from aioipapi._utils import chunker
 from aioipapi._exceptions import ClientError, TooManyRequests, TooLargeBatchSize, AuthError, HttpError
 
@@ -38,8 +39,8 @@ class IpApiClient:
                  lang: Optional[str] = None,
                  key: Optional[str] = None,
                  session: Optional[aiohttp.ClientSession] = None,
-                 retry_attempts: int = constants.RETRY_ATTEMPTS,
-                 retry_delay: float = constants.RETRY_DELAY,
+                 retry_attempts: Optional[int] = None,
+                 retry_delay: Optional[float] = None,
                  ) -> None:
 
         if fields and not isinstance(fields, (abc.Sequence, abc.Set)):
@@ -51,6 +52,11 @@ class IpApiClient:
         if session and not isinstance(session, aiohttp.ClientSession):
             raise TypeError(f"'session' argument must be an instance of {aiohttp.ClientSession}")
 
+        if retry_attempts is None:
+            retry_attempts = config.retry_attempts
+        if retry_delay is None:
+            retry_delay = config.retry_delay
+
         if session:
             own_session = False
         else:
@@ -60,15 +66,15 @@ class IpApiClient:
         self._session = session
         self._own_session = own_session
 
-        self._base_url = yarl.URL(constants.BASE_URL)
+        self._base_url = yarl.URL(config.base_url)
 
         self._fields = fields
         self._lang = lang
         self._key = key
 
-        self._json_rl = constants.JSON_RATE_LIMIT
+        self._json_rl = config.json_rate_limit
         self._json_ttl = 0
-        self._batch_rl = constants.BATCH_RATE_LIMIT
+        self._batch_rl = config.batch_rate_limit
         self._batch_ttl = 0
 
         self._retry_attempts = retry_attempts
@@ -113,9 +119,9 @@ class IpApiClient:
         endpoint = None
 
         if not ip:
-            endpoint = constants.JSON_ENDPOINT
+            endpoint = config.json_endpoint
         elif isinstance(ip, (str, IPv4Address, IPv6Address)):
-            endpoint = f'{constants.JSON_ENDPOINT}/{ip}'
+            endpoint = f'{config.json_endpoint}/{ip}'
         elif isinstance(ip, (abc.Iterable, abc.AsyncIterable)):
             batch = True
         else:
@@ -128,10 +134,15 @@ class IpApiClient:
 
         if batch:
             return await aioitertools.list(self.locator(
-                ip, fields=fields, lang=lang, timeout=timeout))
+                ips=ip,
+                fields=fields,
+                lang=lang,
+                timeout=timeout
+            ))
 
         fields = fields or self._fields
         lang = lang or self._lang
+
         url = self._make_url(endpoint, fields, lang)
 
         return await self._fetch_result(self._fetch_json, url, timeout)
@@ -141,7 +152,7 @@ class IpApiClient:
                       *,
                       fields: _FieldsType = None,
                       lang: Optional[str] = None,
-                      timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                      timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
                       ) -> AsyncIterable[Dict[str, Any]]:
         """Async generator for locating IPs from iterable or async iterable
 
@@ -165,9 +176,10 @@ class IpApiClient:
 
         fields = fields or self._fields
         lang = lang or self._lang
-        url = self._make_url(constants.BATCH_ENDPOINT, fields, lang)
 
-        async for ips_batch in chunker(ips, chunk_size=constants.BATCH_SIZE):
+        url = self._make_url(config.batch_endpoint, fields, lang)
+
+        async for ips_batch in chunker(ips, chunk_size=config.batch_size):
             results = await self._fetch_result(self._fetch_batch, url, ips_batch, timeout)
             async for result in aioitertools.iter(results):
                 yield result
@@ -191,7 +203,7 @@ class IpApiClient:
             return
         if rl == 0:
             logger.warning("API limit is reached. Waiting for %d seconds by rate limit.", ttl)
-            await asyncio.sleep(ttl + constants.TTL_HOLD)
+            await asyncio.sleep(ttl + config.ttl_hold)
 
     @staticmethod
     def _get_rl_ttl(headers):
@@ -264,7 +276,7 @@ async def main():
 
         async for res in client.locator(['5.18.247.243'] * 200):
             print(res)
-        #     pass
+
 
 if __name__ == '__main__':
     asyncio.run(main())

@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-BASE_URL = 'http://ip-api.com/'
-
-JSON_ENDPOINT = 'json'
-BATCH_ENDPOINT = 'batch'
 
 FIELDS = {
     'continent',
@@ -46,13 +42,3 @@ LANGS = {
     'zh-CN',
     'ru',
 }
-
-BATCH_SIZE = 100
-
-JSON_RATE_LIMIT = 45
-BATCH_RATE_LIMIT = 15
-
-RETRY_ATTEMPTS = 3
-RETRY_DELAY = 1.0
-
-TTL_HOLD = 5
