@@ -202,7 +202,7 @@ class IpApiClient:
         if self._key:
             return
         if rl == 0:
-            logger.warning("API limit is reached. Waiting for %d seconds by rate limit.", ttl)
+            logger.warning("API rate limit is reached. Waiting for %d seconds by rate limit.", ttl)
             await asyncio.sleep(ttl + config.ttl_hold)
 
     @staticmethod
@@ -241,8 +241,11 @@ class IpApiClient:
 
         async with self._session.get(url, timeout=timeout) as resp:
             is_ok, self._json_rl, self._json_ttl = self._check_http_status(resp)
+            if not self._key:
+                logger.debug("JSON API rate limit: rl=%d, ttl=%d", self._json_rl, self._json_ttl)
             if is_ok:
                 return await resp.json()
+            logger.debug("JSON API rate limit is reached")
             return None
 
     async def _fetch_batch(self, url, ips_batch, timeout):
@@ -250,8 +253,11 @@ class IpApiClient:
 
         async with self._session.post(url, json=ips_batch, timeout=timeout) as resp:
             is_ok, self._batch_rl, self._batch_ttl = self._check_http_status(resp)
+            if not self._key:
+                logger.debug("BATCH API rate limit: rl=%d, ttl=%d", self._batch_rl, self._batch_ttl)
             if is_ok:
                 return await resp.json()
+            logger.debug("BATCH API rate limit is reached")
             return None
 
     async def _fetch_result(self, fetch_coro, *coro_args):
