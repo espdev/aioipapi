@@ -47,8 +47,8 @@ class _QueryInfo(BaseModel):
     """
 
     query: str
-    fields_: str = Field(alias='fields')
-    lang: str
+    fields_: Optional[str] = Field(alias='fields')
+    lang: Optional[str]
 
     @validator('query', pre=True)
     def query_validator(cls, v):
