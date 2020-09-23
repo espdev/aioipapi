@@ -4,7 +4,7 @@ import asyncio
 from collections import abc
 from ipaddress import IPv4Address, IPv6Address
 from http import HTTPStatus
-from typing import Optional, Sequence, Set, Dict, Any, Union, Type, Iterable, AsyncIterable
+from typing import Optional, Sequence, Set, List, Dict, Any, Union, Type, Iterable, AsyncIterable
 from types import TracebackType
 
 import aiohttp
@@ -103,18 +103,20 @@ class IpApiClient:
                        ip: Optional[Union[_IPType, _IPsType]] = None,
                        *,
                        fields: _FieldsType = None,
-                       lang: Optional[str] = None):
+                       lang: Optional[str] = None,
+                       timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
+                       ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """Locate IP/domain or a batch of IPs
         """
 
         batch = False
+        endpoint = None
 
         if not ip:
             endpoint = constants.JSON_ENDPOINT
         elif isinstance(ip, (str, IPv4Address, IPv6Address)):
             endpoint = f'{constants.JSON_ENDPOINT}/{ip}'
         elif isinstance(ip, (abc.Iterable, abc.AsyncIterable)):
-            endpoint = constants.BATCH_ENDPOINT
             batch = True
         else:
             raise TypeError(f"'ip' argument has an invalid type: {type(ip)}")
@@ -125,40 +127,14 @@ class IpApiClient:
             raise TypeError(f"'lang' argument must be a string")
 
         if batch:
-            rl = self._batch_rl
-            ttl = self._batch_ttl
-            data = ip
-            method = 'POST'
-        else:
-            rl = self._json_rl
-            ttl = self._json_ttl
-            data = None
-            method = 'GET'
-
-        if not self._key and rl == 0:
-            logger.debug("Waiting for %d seconds by rate limit", ttl)
-            await asyncio.sleep(ttl)
+            return await aioitertools.list(self.locator(
+                ip, fields=fields, lang=lang, timeout=timeout))
 
         fields = fields or self._fields
         lang = lang or self._lang
         url = self._make_url(endpoint, fields, lang)
 
-        async with self._session.request(method, url, json=data) as resp:
-            headers = resp.headers
-            rl = int(headers['X-Rl'])
-            ttl = int(headers['X-Ttl'])
-
-            if batch:
-                self._batch_rl = rl
-                self._batch_ttl = ttl
-            else:
-                self._json_rl = rl
-                self._json_ttl = ttl
-
-            assert resp.status == 200, resp.status
-            result = await resp.json()
-
-        return result
+        return await self._fetch_result(self._fetch_json, url, timeout)
 
     async def locator(self,
                       ips: _IPsType,
@@ -191,42 +167,10 @@ class IpApiClient:
         lang = lang or self._lang
         url = self._make_url(constants.BATCH_ENDPOINT, fields, lang)
 
-        retrying = self._create_retrying(self._retry_attempts, self._retry_delay)
-
         async for ips_batch in chunker(ips, chunk_size=constants.BATCH_SIZE):
-            async for attempt in retrying:
-                with attempt:
-                    while True:  # retrying loop when "too many requests" without API key
-                        await self._wait_for_rate_limit(self._batch_rl, self._batch_ttl)
-
-                        try:
-                            async with self._session.post(url, json=ips_batch, timeout=timeout) as resp:
-                                self._update_batch_rl_ttl(resp.headers)
-                                self._check_http_status(resp.status)
-                                results = await resp.json()
-
-                        except TooManyRequests as err:
-                            if self._key:
-                                raise TooManyRequests(
-                                    f"Too many requests ({resp.status}) with using API key") from err
-                            else:
-                                logger.error("Too many requests (%d)", resp.status)
-
-                        except aiohttp.ClientError as err:
-                            raise ClientError(f"Client error: {repr(err)}") from err
-
-                        async for result in aioitertools.iter(results):
-                            yield result
-                        break
-
-    @staticmethod
-    def _create_retrying(attempts, delay):
-        return tenacity.AsyncRetrying(
-            reraise=True,
-            retry=tenacity.retry_if_exception_type(ClientError),
-            stop=tenacity.stop_after_attempt(attempts),
-            wait=tenacity.wait_fixed(delay)
-        )
+            results = await self._fetch_result(self._fetch_batch, url, ips_batch, timeout)
+            async for result in aioitertools.iter(results):
+                yield result
 
     def _make_url(self, endpoint, fields, lang) -> str:
         url = self._base_url / endpoint
@@ -259,18 +203,16 @@ class IpApiClient:
 
         return rl, ttl
 
-    def _update_batch_rl_ttl(self, headers):
-        rl, ttl = self._get_rl_ttl(headers)
-        if rl is not None and ttl is not None:
-            self._batch_rl = rl
-            self._batch_ttl = ttl
+    def _check_http_status(self, resp):
+        rl, ttl = self._get_rl_ttl(resp.headers)
+        status = resp.status
 
-    @staticmethod
-    def _check_http_status(status):
         if status == HTTPStatus.OK:
-            return
+            return True, rl, ttl
         elif status == HTTPStatus.TOO_MANY_REQUESTS:
-            raise TooManyRequests
+            if self._key:
+                raise TooManyRequests("Too many requests with using API key")
+            return False, rl, ttl
         elif status == HTTPStatus.UNPROCESSABLE_ENTITY:
             raise TooLargeBatchSize(f"Batch size is too large ({status})")
         elif status == HTTPStatus.FORBIDDEN:
@@ -278,12 +220,51 @@ class IpApiClient:
         else:
             raise HttpError(f"HTTP {status} error occurred", status=status)
 
+    async def _fetch_json(self, url, timeout):
+        await self._wait_for_rate_limit(self._json_rl, self._json_ttl)
+
+        async with self._session.get(url, timeout=timeout) as resp:
+            is_ok, self._json_rl, self._json_ttl = self._check_http_status(resp)
+            if is_ok:
+                return await resp.json()
+            return None
+
+    async def _fetch_batch(self, url, ips_batch, timeout):
+        await self._wait_for_rate_limit(self._batch_rl, self._batch_ttl)
+
+        async with self._session.post(url, json=ips_batch, timeout=timeout) as resp:
+            is_ok, self._batch_rl, self._batch_ttl = self._check_http_status(resp)
+            if is_ok:
+                return await resp.json()
+            return None
+
+    async def _fetch_result(self, fetch_coro, *args):
+        retrying = tenacity.AsyncRetrying(
+            reraise=True,
+            retry=tenacity.retry_if_exception_type(ClientError),
+            stop=tenacity.stop_after_attempt(self._retry_attempts),
+            wait=tenacity.wait_fixed(self._retry_delay)
+        )
+
+        async for attempt in retrying:
+            with attempt:
+                try:
+                    while True:  # retrying loop when "too many requests" without API key
+                        result = await fetch_coro(*args)
+                        if result:
+                            return result
+                except aiohttp.ClientError as err:
+                    raise ClientError(f"Client error: {repr(err)}") from err
+
 
 async def main():
     async with IpApiClient(lang='ru') as client:
+        res = await client.location('5.18.247.243')
+        print(res)
+
         async for res in client.locator(['5.18.247.243'] * 200):
             print(res)
-            pass
+        #     pass
 
 if __name__ == '__main__':
     asyncio.run(main())
