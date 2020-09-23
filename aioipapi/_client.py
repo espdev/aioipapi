@@ -7,6 +7,7 @@ from http import HTTPStatus
 from typing import Optional, Sequence, Set, List, Dict, Any, Union, Type, Iterable, AsyncIterable
 from types import TracebackType
 
+from pydantic import BaseModel, Field, ValidationError, validator
 import aiohttp
 import aiohttp.helpers
 import yarl
@@ -27,10 +28,70 @@ _FieldsType = Optional[Union[Sequence[str], Set[str]]]
 _TimeoutType = Union[aiohttp.ClientTimeout, int, float, object]
 
 
+class _IpAddr(BaseModel):
+    """IP address validation model
+    """
+
+    v: Union[IPv4Address, IPv6Address]
+
+
+class _Fields(BaseModel):
+    """Fields validation model
+    """
+
+    v: Union[Sequence[str], Set[str]]
+
+
+class _QueryInfo(BaseModel):
+    """Validation model for IPs query with additional info
+    """
+
+    query: str
+    fields_: str = Field(alias='fields')
+    lang: str
+
+    @validator('query', pre=True)
+    def query_validator(cls, v):
+        try:
+            _IpAddr(v=v)
+        except ValidationError as err:
+            raise ValueError(f"IP address '{v}' is invalid: {err}") from err
+        return str(v)
+
+    @validator('fields_', pre=True)
+    def fields_validator(cls, v):
+        try:
+            _Fields(v=v)
+        except ValidationError:
+            raise ValueError(f"'fields' must be a sequence or set of strings")
+        fields = set(v)
+        supported_fields = constants.FIELDS | constants.SERVICE_FIELDS
+        if not fields.issubset(supported_fields):
+            logger.warning("%s field set is not a subset of supported field set %s",
+                           fields, supported_fields)
+        return ','.join(fields | constants.SERVICE_FIELDS)
+
+    @validator('lang', pre=True)
+    def lang_validator(cls, v):
+        if not isinstance(v, str):
+            raise ValueError("'lang' must be a string")
+        if v not in constants.LANGS:
+            logger.warning("'%s' lang is not in supported language set: %s",
+                           v, constants.LANGS)
+        return v
+
+
 class IpApiClient:
     """IP-API asynchronous http client to perform geo-location
 
-    Asynchronous http client for https://ip-api.com/ web-service.
+    Asynchronous http client for https://ip-api.com/ geo-location web-service.
+
+    :param fields: The sequence or set of returned fields in the result
+    :param lang: The language of the result
+    :param key: The API key for pro unlimited access
+    :param session: Existing aiohttp.ClientSession istance
+    :param retry_attempts: The number of attempts of fetch result from the service
+    :param retry_delay: The delay in seconds between retry attempts
 
     """
 
@@ -256,6 +317,17 @@ class IpApiClient:
             return None
 
     async def _fetch_batch(self, url, ips_batch, timeout):
+        ips_batch = list(ips_batch)
+
+        for i, ip in enumerate(ips_batch):
+            try:
+                if isinstance(ip, abc.Mapping):
+                    ips_batch[i] = _QueryInfo(**ip).dict(by_alias=True)
+                else:
+                    _IpAddr(v=ip)
+            except ValidationError as err:
+                raise ValueError(f"Invalid query {ip}: {err}") from err
+
         await self._wait_for_rate_limit(self._batch_rl, self._batch_ttl)
 
         async with self._session.post(url, json=ips_batch, timeout=timeout) as resp:
