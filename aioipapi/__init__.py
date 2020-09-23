@@ -6,7 +6,7 @@ from aioipapi import _logging  # noqa
 from aioipapi._config import Config, config
 from aioipapi._constants import FIELDS, LANGS
 from aioipapi._client import IpApiClient
-from aioipapi._exceptions import IpApiError, ClientError, TooManyRequests, TooLargeBatchSize, AuthError, HttpError
+from aioipapi._exceptions import IpApiError, ClientError, HttpError, TooManyRequests, TooLargeBatchSize, AuthError
 
 
 try:
@@ -23,8 +23,8 @@ __all__ = [
     'IpApiClient',
     'IpApiError',
     'ClientError',
+    'HttpError',
     'TooManyRequests',
     'TooLargeBatchSize',
     'AuthError',
-    'HttpError',
 ]
