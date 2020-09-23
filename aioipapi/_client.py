@@ -113,6 +113,12 @@ class IpApiClient:
                        timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
                        ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """Locate IP/domain or a batch of IPs
+
+        :param ip: None or IP/domain or iterable or async iterable of IPs or dicts with additional info (see API docs)
+        :param fields: The sequence or set of returned fields in the result
+        :param lang: The language of the result
+        :param timeout: The timeout of the whole request to the service
+        :return: The dict with result for None/IP/domain or the list of dictionaries for IPs
         """
 
         batch = False
@@ -133,7 +139,7 @@ class IpApiClient:
             raise TypeError(f"'lang' argument must be a string")
 
         if batch:
-            return await aioitertools.list(self.locator(
+            return await aioitertools.list(self.location_stream(
                 ips=ip,
                 fields=fields,
                 lang=lang,
@@ -147,14 +153,14 @@ class IpApiClient:
 
         return await self._fetch_result(self._fetch_json, url, timeout)
 
-    async def locator(self,
-                      ips: _IPsType,
-                      *,
-                      fields: _FieldsType = None,
-                      lang: Optional[str] = None,
-                      timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
-                      ) -> AsyncIterable[Dict[str, Any]]:
-        """Async generator for locating IPs from iterable or async iterable
+    async def location_stream(self,
+                              ips: _IPsType,
+                              *,
+                              fields: _FieldsType = None,
+                              lang: Optional[str] = None,
+                              timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
+                              ) -> AsyncIterable[Dict[str, Any]]:
+        """Returns async generator for locating IPs from iterable or async iterable
 
         The method always uses batch API: https://ip-api.com/docs/api:batch
 
@@ -277,3 +283,92 @@ class IpApiClient:
                             return result
                 except aiohttp.ClientError as err:
                     raise ClientError(f"Client error: {repr(err)}") from err
+
+
+async def location(ip: Optional[Union[_IPType, _IPsType]] = None,
+                   *,
+                   fields: _FieldsType = None,
+                   lang: Optional[str] = None,
+                   key: Optional[str] = None,
+                   session: Optional[aiohttp.ClientSession] = None,
+                   timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                   retry_attempts: Optional[int] = None,
+                   retry_delay: Optional[float] = None,
+                   ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    """Locate IP/domain or batch of IPs
+
+    The shortcut function to get geo-location of IP/domain/IPs.
+
+    Parameters:
+
+    :param ip: None or IP/domain or iterable or async iterable of IPs or dicts with additional info (see API docs)
+    :param fields: The sequence or set of returned fields in the result
+    :param lang: The language of the result
+    :param key: The API key for pro unlimited access
+    :param session: Existing aiohttp.ClientSession istance
+    :param timeout: The timeout of the whole request to the service
+    :param retry_attempts: The number of attempts of fetch result from the service
+    :param retry_delay: The delay in seconds between retry attempts
+    :return: The dict with result for None/IP/domain or the list of dictionaries for IPs
+
+    """
+
+    client = IpApiClient(
+        fields=fields,
+        lang=lang,
+        key=key,
+        session=session,
+        retry_attempts=retry_attempts,
+        retry_delay=retry_delay
+    )
+
+    try:
+        result = await client.location(ip, timeout=timeout)
+    finally:
+        await client.close()
+
+    return result
+
+
+async def location_stream(ips: _IPsType,
+                          *,
+                          fields: _FieldsType = None,
+                          lang: Optional[str] = None,
+                          key: Optional[str] = None,
+                          session: Optional[aiohttp.ClientSession] = None,
+                          timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                          retry_attempts: Optional[int] = None,
+                          retry_delay: Optional[float] = None
+                          ) -> AsyncIterable[Dict[str, Any]]:
+    """Returns async generator for locating IPs from iterable or async iterable
+
+    The shortcut function to get geo-location of batch of IPs in streaming manner.
+
+    Parameters:
+
+    :param ips: The iterable or async iterable of IPs or dicts with additional info (see API docs)
+    :param fields: The sequence or set of returned fields in the result
+    :param lang: The language of the result
+    :param key: The API key for pro unlimited access
+    :param session: Existing aiohttp.ClientSession istance
+    :param timeout: The timeout of the whole request to the service
+    :param retry_attempts: The number of attempts of fetch result from the service
+    :param retry_delay: The delay in seconds between retry attempts
+    :return: Async generator for locating IPs
+
+    """
+
+    client = IpApiClient(
+        fields=fields,
+        lang=lang,
+        key=key,
+        session=session,
+        retry_attempts=retry_attempts,
+        retry_delay=retry_delay
+    )
+
+    try:
+        async for result in client.location_stream(ips, timeout=timeout):
+            yield result
+    finally:
+        await client.close()
