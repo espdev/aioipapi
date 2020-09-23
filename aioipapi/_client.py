@@ -231,17 +231,17 @@ class IpApiClient:
         elif status == HTTPStatus.TOO_MANY_REQUESTS:
             if self._key:
                 raise TooManyRequests(
-                    f"Too many requests with using API key ({status})", status=status)
+                    f"(HTTP {status}) Too many requests with using API key", status=status)
             return False, rl, ttl
         elif status == HTTPStatus.UNPROCESSABLE_ENTITY:
             raise TooLargeBatchSize(
-                f"Batch size is too large ({status})", status=status)
+                f"(HTTP {status}) Batch size is too large", status=status)
         elif status == HTTPStatus.FORBIDDEN:
             raise AuthError(
-                f"Forbidden. Please check your API key ({status})", status=status)
+                f"(HTTP {status}) Forbidden. Please check your API key", status=status)
         else:
             raise HttpError(
-                f"HTTP error occurred ({status})", status=status)
+                f"HTTP {status} error occurred", status=status)
 
     async def _fetch_json(self, url, timeout):
         await self._wait_for_rate_limit(self._json_rl, self._json_ttl)
