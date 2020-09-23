@@ -20,8 +20,8 @@ from aioipapi._utils import chunker
 from aioipapi._exceptions import ClientError, HttpError, TooManyRequests, TooLargeBatchSize, AuthError
 
 
-_IPType = Union[IPv4Address, IPv6Address, str]
-_QueryType = Union[_IPType, dict]
+_IPType = Union[str, IPv4Address, IPv6Address]
+_QueryType = Union[_IPType, Dict[str, str]]
 _IPsType = Union[Iterable[_QueryType], AsyncIterable[_QueryType]]
 _FieldsType = Optional[Union[Sequence[str], Set[str]]]
 _TimeoutType = Union[aiohttp.ClientTimeout, int, float, object]
