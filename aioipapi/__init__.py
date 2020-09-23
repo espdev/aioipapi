@@ -5,7 +5,7 @@ from importlib_metadata import version, PackageNotFoundError
 from aioipapi import _logging  # noqa
 from aioipapi._config import Config, config
 from aioipapi._constants import FIELDS, LANGS
-from aioipapi._client import IpApiClient
+from aioipapi._client import IpApiClient, location, location_stream
 from aioipapi._exceptions import IpApiError, ClientError, HttpError, TooManyRequests, TooLargeBatchSize, AuthError
 
 
@@ -27,4 +27,6 @@ __all__ = [
     'TooManyRequests',
     'TooLargeBatchSize',
     'AuthError',
+    'location',
+    'location_stream',
 ]
