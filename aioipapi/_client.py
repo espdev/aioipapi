@@ -211,14 +211,14 @@ class IpApiClient:
             return True, rl, ttl
         elif status == HTTPStatus.TOO_MANY_REQUESTS:
             if self._key:
-                raise TooManyRequests("Too many requests with using API key")
+                raise TooManyRequests(f"Too many requests with using API key ({status})")
             return False, rl, ttl
         elif status == HTTPStatus.UNPROCESSABLE_ENTITY:
             raise TooLargeBatchSize(f"Batch size is too large ({status})")
         elif status == HTTPStatus.FORBIDDEN:
-            raise AuthError(f"Forbidden ({status}). Please check your API key")
+            raise AuthError(f"Forbidden. Please check your API key ({status})")
         else:
-            raise HttpError(f"HTTP {status} error occurred", status=status)
+            raise HttpError(f"HTTP error occurred ({status})", status=status)
 
     async def _fetch_json(self, url, timeout):
         await self._wait_for_rate_limit(self._json_rl, self._json_ttl)
@@ -238,7 +238,7 @@ class IpApiClient:
                 return await resp.json()
             return None
 
-    async def _fetch_result(self, fetch_coro, *args):
+    async def _fetch_result(self, fetch_coro, *coro_args):
         retrying = tenacity.AsyncRetrying(
             reraise=True,
             retry=tenacity.retry_if_exception_type(ClientError),
@@ -250,7 +250,7 @@ class IpApiClient:
             with attempt:
                 try:
                     while True:  # retrying loop when "too many requests" without API key
-                        result = await fetch_coro(*args)
+                        result = await fetch_coro(*coro_args)
                         if result:
                             return result
                 except aiohttp.ClientError as err:

@@ -3,7 +3,7 @@
 from aioipapi import _logging  # noqa
 from aioipapi._constants import FIELDS, LANGS
 from aioipapi._client import IpApiClient
-from aioipapi._exceptions import IpApiError
+from aioipapi._exceptions import IpApiError, ClientError, TooManyRequests, TooLargeBatchSize, AuthError, HttpError
 
 
 __version__ = '0.1.0'
@@ -14,4 +14,9 @@ __all__ = [
     'LANGS',
     'IpApiClient',
     'IpApiError',
+    'ClientError',
+    'TooManyRequests',
+    'TooLargeBatchSize',
+    'AuthError',
+    'HttpError',
 ]
