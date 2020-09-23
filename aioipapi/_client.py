@@ -322,7 +322,7 @@ class IpApiClient:
         for i, ip in enumerate(ips_batch):
             try:
                 if isinstance(ip, abc.Mapping):
-                    ips_batch[i] = _QueryInfo(**ip).dict(by_alias=True)
+                    ips_batch[i] = _QueryInfo(**ip).dict(by_alias=True, exclude_none=True)
                 else:
                     _IpAddr(v=ip)
             except ValidationError as err:
