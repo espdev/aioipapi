@@ -277,16 +277,3 @@ class IpApiClient:
                             return result
                 except aiohttp.ClientError as err:
                     raise ClientError(f"Client error: {repr(err)}") from err
-
-
-async def main():
-    async with IpApiClient(lang='ru') as client:
-        res = await client.location('5.18.247.243')
-        print(res)
-
-        async for res in client.locator(['5.18.247.243'] * 200):
-            print(res)
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
