@@ -24,6 +24,7 @@ _IPType = Union[IPv4Address, IPv6Address, str]
 _QueryType = Union[_IPType, dict]
 _IPsType = Union[Iterable[_QueryType], AsyncIterable[_QueryType]]
 _FieldsType = Optional[Union[Sequence[str], Set[str]]]
+_TimeoutType = Union[aiohttp.ClientTimeout, int, float, object]
 
 
 class IpApiClient:
@@ -110,7 +111,7 @@ class IpApiClient:
                        *,
                        fields: _FieldsType = None,
                        lang: Optional[str] = None,
-                       timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
+                       timeout: _TimeoutType = aiohttp.helpers.sentinel
                        ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """Locate IP/domain or a batch of IPs
 
@@ -158,7 +159,7 @@ class IpApiClient:
                               *,
                               fields: _FieldsType = None,
                               lang: Optional[str] = None,
-                              timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel
+                              timeout: _TimeoutType = aiohttp.helpers.sentinel
                               ) -> AsyncIterable[Dict[str, Any]]:
         """Returns async generator for locating IPs from iterable or async iterable
 
@@ -291,7 +292,7 @@ async def location(ip: Optional[Union[_IPType, _IPsType]] = None,
                    lang: Optional[str] = None,
                    key: Optional[str] = None,
                    session: Optional[aiohttp.ClientSession] = None,
-                   timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                   timeout: _TimeoutType = aiohttp.helpers.sentinel,
                    retry_attempts: Optional[int] = None,
                    retry_delay: Optional[float] = None,
                    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
@@ -336,7 +337,7 @@ async def location_stream(ips: _IPsType,
                           lang: Optional[str] = None,
                           key: Optional[str] = None,
                           session: Optional[aiohttp.ClientSession] = None,
-                          timeout: Union[aiohttp.ClientTimeout, int, float, object] = aiohttp.helpers.sentinel,
+                          timeout: _TimeoutType = aiohttp.helpers.sentinel,
                           retry_attempts: Optional[int] = None,
                           retry_delay: Optional[float] = None
                           ) -> AsyncIterable[Dict[str, Any]]:
