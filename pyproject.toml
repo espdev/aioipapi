@@ -21,6 +21,7 @@ yarl = "^1.5.1"
 aioitertools = "^0.7.0"
 tenacity = "^6.2.0"
 pydantic = "^1.6.1"
+importlib_metadata = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0.2"
