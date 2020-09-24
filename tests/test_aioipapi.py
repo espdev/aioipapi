@@ -13,9 +13,10 @@ from aioipapi import IpApiClient
     ('192.168.0.1', ['isp', 'country'], None, {'status': 'success', 'message': 'test_json_query', 'query': '192.168.0.1', 'country': 'test', 'isp': 'test'}),
     (['192.168.0.1', '192.168.0.2'], None, None, [{'status': 'success', 'message': 'test_batch', 'query': '192.168.0.1'},
                                                   {'status': 'success', 'message': 'test_batch', 'query': '192.168.0.2'}]),
-    ([{'query': '192.168.0.1', 'fields': {'lon'}}, '192.168.0.2', {'query': '192.168.0.3', 'lang': 'ru'}], ['lat'], 'de', [{'status': 'success', 'message': 'test_batch', 'query': '192.168.0.1', 'lon': 'test', 'lang': 'de'},
-                                                                                                                           {'status': 'success', 'message': 'test_batch', 'query': '192.168.0.2', 'lat': 'test', 'lang': 'de'},
-                                                                                                                           {'status': 'success', 'message': 'test_batch', 'query': '192.168.0.3', 'lat': 'test', 'lang': 'ru'}]),
+    ([{'query': '192.168.0.1', 'fields': {'lon'}}, '192.168.0.2', {'query': '192.168.0.3', 'lang': 'ru'}], ['lat'], 'de',
+     [{'status': 'success', 'message': 'test_batch', 'query': '192.168.0.1', 'lon': 'test', 'lang': 'de'},
+      {'status': 'success', 'message': 'test_batch', 'query': '192.168.0.2', 'lat': 'test', 'lang': 'de'},
+      {'status': 'success', 'message': 'test_batch', 'query': '192.168.0.3', 'lat': 'test', 'lang': 'ru'}]),
 ])
 async def test_location(query, fields, lang, expected, config_local):
     ipapi_client = IpApiClient(fields=fields, lang=lang)
