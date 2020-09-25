@@ -24,6 +24,20 @@ async def test_client_close():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('query', [
+    {'query': '1.1.1.1', 'fields': ['lon', 'lat'], 'lang': 'ru', 'extra': 'spam'},
+    {'query': '1.1.1.1.1'},
+    {'query': '1.1.1.1', 'fields': 'foo'},
+    {'query': '1.1.1.1', 'lang': 1},
+    {'fields': ['lon', 'lat'], 'lang': 'ru'},
+])
+async def test_validate_batch_input_data(query):
+    async with IpApiClient() as client:
+        with pytest.raises(ValueError):
+            await client.location([query])
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('query, fields, lang, expected', [
     (None, None, None, {'status': 'success', 'message': 'test_json', 'query': '127.0.0.1'}),
     ('localhost', None, None, {'status': 'success', 'message': 'test_json_query', 'query': 'localhost'}),
