@@ -3,10 +3,10 @@
 import asyncio
 
 import pytest
-from aiohttp.test_utils import TestServer, TestClient
+from aiohttp.test_utils import TestServer
 from aiohttp import web
 
-from aioipapi import config
+from aioipapi import config as ipapi_config
 
 
 @pytest.fixture(scope='session')
@@ -81,16 +81,29 @@ async def ipapi_server():
     await server.close()
 
 
-@pytest.fixture(scope='session')
-async def client_session(ipapi_server):
-    client = TestClient(ipapi_server)
-    yield client.session
-    await client.close()
-
-
 @pytest.fixture
 async def config_local(ipapi_server):
-    base_url = config.base_url
-    config.base_url = str(ipapi_server.make_url(''))
-    yield config
-    config.base_url = base_url
+    base_url = ipapi_config.base_url
+    ipapi_config.base_url = str(ipapi_server.make_url(''))
+    yield ipapi_config
+    ipapi_config.base_url = base_url
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-real-tests", action="store_true", default=False,
+        help="run tests with requests to ip-api.com service"
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "real_service: mark test as real")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-real-tests"):
+        return
+    skip_real_tests = pytest.mark.skip(reason="need --run-real-tests option to run")
+    for item in items:
+        if "real_service" in item.keywords:
+            item.add_marker(skip_real_tests)
