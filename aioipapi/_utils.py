@@ -9,10 +9,10 @@ async def chunker(iterable, chunk_size: int):
     """Asynchronous chunks generator
     """
 
-    if not isinstance(iterable, abc.AsyncIterable):
-        aiterable = aioitertools.iter(iterable)
-    else:
+    if isinstance(iterable, abc.AsyncIterable):
         aiterable = iterable
+    else:
+        aiterable = aioitertools.iter(iterable)
 
     args = [aiterable] * chunk_size
 
