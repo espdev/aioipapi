@@ -153,6 +153,8 @@ async with IpApiClient(key='your-api-key') as client:
     ...
 ```
 
+When API key is set, the package always uses HTTPS for connection with ip-api service.
+
 ## Free API Rate Limit Control
 
 ip-api service has rate limits in free API (without key). 
