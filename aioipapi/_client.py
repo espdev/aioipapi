@@ -125,7 +125,7 @@ class IpApiClient:
             session = aiohttp.ClientSession()
             own_session = True
 
-        self._session = session
+        self._session: Optional[aiohttp.ClientSession] = session
         self._own_session = own_session
 
         self._base_url = yarl.URL(config.base_url)
@@ -160,12 +160,19 @@ class IpApiClient:
                         exc_tb: Optional[TracebackType]) -> None:
         await self.close()
 
+    @property
+    def closed(self) -> bool:
+        """Returns True if the client is closed
+        """
+        return self._session is None
+
     async def close(self):
         """Close client and own session
         """
 
-        if self._own_session and self._session:
+        if self._own_session and not self.closed:
             await self._session.close()
+        self._session = None
 
     async def location(self,
                        ip: Optional[Union[_IPType, _IPsType]] = None,
