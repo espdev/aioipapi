@@ -190,6 +190,9 @@ class IpApiClient:
         :return: The dict with result for None/IP/domain or the list of dictionaries for IPs
         """
 
+        if self.closed:
+            raise ValueError('The client session is already closed')
+
         batch = False
         endpoint = None
 
@@ -241,6 +244,9 @@ class IpApiClient:
         :param timeout: The timeout of the whole request to API
         :return: async generator of results for every IP
         """
+
+        if self.closed:
+            raise ValueError('The client session is already closed')
 
         if not isinstance(ips, (abc.Iterable, abc.AsyncIterable)):
             raise TypeError("'ips' argument must be an iterable or async iterable")
