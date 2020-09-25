@@ -286,8 +286,9 @@ class IpApiClient:
         if self._key:
             return
         if rl == 0:
-            logger.warning("API rate limit is reached. Waiting for %d seconds by rate limit.", ttl)
-            await asyncio.sleep(ttl + config.ttl_hold)
+            ttl += config.ttl_hold
+            logger.warning("API rate limit is reached. Waiting for %d seconds by rate limit...", ttl)
+            await asyncio.sleep(ttl)
 
     @staticmethod
     def _get_rl_ttl(headers):
