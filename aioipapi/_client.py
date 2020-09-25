@@ -50,6 +50,9 @@ class _QueryInfo(BaseModel):
     fields_: Optional[str] = Field(alias='fields')
     lang: Optional[str]
 
+    class Config:
+        extra = 'forbid'
+
     @validator('query', pre=True)
     def query_validator(cls, v):
         try:
