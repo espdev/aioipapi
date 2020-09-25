@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+import aioitertools
 
 from aioipapi import IpApiClient
 
@@ -110,13 +111,13 @@ async def test_location_invalid_query():
 @pytest.mark.real_service
 @pytest.mark.asyncio
 async def test_location_a_lot_queries():
-    ips = ['8.8.8.8'] * 2000
+    ips = ['8.8.8.8', '1.1.1.1', '1.0.0.1'] * 700
     check_fields = ['org', 'lat', 'lon', 'country', 'as']
 
     async with IpApiClient() as client:
-        async for res in client.location_stream(ips):
+        async for ip, res in aioitertools.zip(ips, client.location_stream(ips)):
             assert 'status' in res and res['status'] == 'success'
-            assert 'query' in res
+            assert 'query' in res and res['query'] == ip
 
             for field in check_fields:
                 assert field in res
