@@ -167,7 +167,8 @@ ip-api service has rate limits in free API (without key).
 Currently, there are 45 requests per minute for JSON endpoint and 15 requests per minute for Batch JSON endpoint.
 
 The package controls the rate limits using `X-Rl` and `X-Ttl` response headers. 
-In other words, you should never get 429 HTTP error when using free API.
+In other words, you are unlikely to get 429 HTTP error when using free API. 
+When API key is being used, the rate limits are not being checked, because pro API is theoretically unlimited.
 
 Let's locate a lot of IPs for example:
 
@@ -177,7 +178,7 @@ import sys
 import logging
 
 logging.basicConfig(
-    format='[%(levelname)s] - %(message)s',
+    format='%(relativeCreated)d [%(levelname)s] %(message)s',
     level=logging.DEBUG,
     stream=sys.stderr,
 )
@@ -187,19 +188,27 @@ from aioipapi import location
 asyncio.run(location(['8.8.8.8'] * 2000))
 ```
 ```
-[DEBUG] - BATCH API rate limit: rl=14, ttl=60
-[DEBUG] - BATCH API rate limit: rl=13, ttl=59
-[DEBUG] - BATCH API rate limit: rl=12, ttl=59
-...
-[DEBUG] - BATCH API rate limit: rl=2, ttl=58
-[DEBUG] - BATCH API rate limit: rl=1, ttl=58
-[DEBUG] - BATCH API rate limit: rl=0, ttl=58
-[WARNING] - API rate limit is reached. Waiting for 58 seconds by rate limit.
-[DEBUG] - BATCH API rate limit: rl=14, ttl=60
-[DEBUG] - BATCH API rate limit: rl=13, ttl=59
-[DEBUG] - BATCH API rate limit: rl=12, ttl=59
-[DEBUG] - BATCH API rate limit: rl=11, ttl=59
-[DEBUG] - BATCH API rate limit: rl=10, ttl=59
+798 [DEBUG] BATCH API rate limit: rl=14, ttl=60
+900 [DEBUG] BATCH API rate limit: rl=13, ttl=59
+1001 [DEBUG] BATCH API rate limit: rl=12, ttl=59
+1103 [DEBUG] BATCH API rate limit: rl=11, ttl=59
+1247 [DEBUG] BATCH API rate limit: rl=10, ttl=59
+1391 [DEBUG] BATCH API rate limit: rl=9, ttl=59
+1493 [DEBUG] BATCH API rate limit: rl=8, ttl=59
+1595 [DEBUG] BATCH API rate limit: rl=7, ttl=59
+1698 [DEBUG] BATCH API rate limit: rl=6, ttl=59
+1809 [DEBUG] BATCH API rate limit: rl=5, ttl=58
+1910 [DEBUG] BATCH API rate limit: rl=4, ttl=58
+2015 [DEBUG] BATCH API rate limit: rl=3, ttl=58
+2116 [DEBUG] BATCH API rate limit: rl=2, ttl=58
+2216 [DEBUG] BATCH API rate limit: rl=1, ttl=58
+2315 [DEBUG] BATCH API rate limit: rl=0, ttl=58
+2367 [WARNING] API rate limit is reached. Waiting for 61 seconds by rate limit...
+63464 [DEBUG] BATCH API rate limit: rl=14, ttl=60
+63605 [DEBUG] BATCH API rate limit: rl=13, ttl=59
+63695 [DEBUG] BATCH API rate limit: rl=12, ttl=59
+63790 [DEBUG] BATCH API rate limit: rl=11, ttl=59
+63894 [DEBUG] BATCH API rate limit: rl=10, ttl=59
 ```
 
 # License
