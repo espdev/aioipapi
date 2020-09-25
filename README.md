@@ -16,7 +16,7 @@ The package features:
 
 - Support JSON API [endpoint](https://ip-api.com/docs/api:json)
 - Support Batch JSON API [endpoint](https://ip-api.com/docs/api:batch)
-- Acces to [pro service](https://members.ip-api.com/) with API key
+- Access to [pro service](https://members.ip-api.com/) with API key
 - Free API rate limits control
 - Customizable retrying when networking problems
 
