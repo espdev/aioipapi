@@ -41,6 +41,18 @@ print(asyncio.run(location()))
 {'status': 'success', 'country': 'United States', 'countryCode': 'US', 'region': 'CA', 'regionName': 'California', 'city': 'Santa Clara', 'zip': '95051', 'lat': 37.3417, 'lon': -121.9753, 'timezone': 'America/Los_Angeles', 'isp': 'DigitalOcean, LLC', 'org': 'Digital Ocean', 'as': 'AS14061 DigitalOcean, LLC', 'query': 'XXX.XX.XXX.XXX'}
 ```
 
+Use `location` coroutine to locate a domain name:
+
+```python
+print(asyncio.run(location('github.com')))
+```
+```
+{'status': 'success', 'country': 'Netherlands', 'countryCode': 'NL', 'region': 'NH', 'regionName': 'North Holland', 'city': 'Amsterdam', 'zip': '1012', 'lat': 52.3667, 'lon': 4.89454, 'timezone': 'Europe/Amsterdam', 'isp': 'GitHub, Inc.', 'org': 'GitHub, Inc.', 'as': 'AS36459 GitHub, Inc.', 'query': '140.82.118.3'}
+```
+
+A domain location is supported only in JSON endpoint. Currently, batch JSON endpoint does not support domain names as query. 
+In other words, you cannot locate a list of domain names per time. 
+
 Use `location` coroutine to locate an IP with cusomized result fields and language:
 
 ```python
@@ -64,7 +76,26 @@ print(asyncio.run(location(['1.0.0.1', '1.1.1.1', '8.8.4.4', '8.8.8.8'], fields=
 ]
 ```
 
-In this case the package uses Batch JSON API endpoint.
+You can customize the result fields and lang for each IP in the query list:
+
+```python
+ips = [
+    '77.88.55.66',
+    {'query': '1.1.1.1', 'fields': ['lat', 'lon', 'country'], 'lang': 'de'},
+    {'query': '8.8.8.8', 'fields': ['continent', 'country'], 'lang': 'ru'},
+]
+
+print(asyncio.run(location(ips, fields=['region', 'isp', 'org'])))
+```
+```
+[
+  {'status': 'success', 'region': 'MOW', 'isp': 'Yandex LLC', 'org': 'Yandex enterprise network', 'query': '77.88.55.66'},
+  {'status': 'success', 'country': 'Australien', 'lat': -27.4766, 'lon': 153.0166, 'query': '1.1.1.1'}, 
+  {'status': 'success', 'continent': 'Северная Америка', 'country': 'США', 'query': '8.8.8.8'}
+]
+```
+
+In these cases the package uses Batch JSON API endpoint.
 
 Use `location_stream` async generator to locate IPs from an iterable or async iterable:
 
