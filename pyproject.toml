@@ -6,7 +6,7 @@ authors = ["Eugene Prilepin <esp.home@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 include = ["CHANGELOG.md"]
-keywords = ["ipapi", "ip-api", "geoip", "geo-ip", "geolocation", "location"]
+keywords = ["ipapi", "ip-api", "geoip", "geo-ip", "geolocation", "geolocation-api"]
 
 classifiers = [
     "Development Status :: 4 - Beta",
