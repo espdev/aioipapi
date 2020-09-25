@@ -95,7 +95,7 @@ async def locate():
 asyncio.run(locate())
 ```
 
-`IpApiClient` provides `location` and `location_stream` methods similar to the corresponding functions.
+`IpApiClient` provides `location` and `location_stream` methods similar to the corresponding non-member coroutines.
 
 Use `IpApiClient` class with existing `aiohttp.ClientSession` instead of client own session:
 
@@ -112,7 +112,7 @@ async def locate():
 asyncio.run(locate())
 ```
 
-Usage of existing session also supported in `location` and `location_stream` non-member functions.
+Usage of existing session also supported in `location` and `location_stream` non-member coroutines.
 
 If you want to use unlimited pro ip-api service you can use your API key in `location`, `location_stream` functions and `IpApiClient`:
 
