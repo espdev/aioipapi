@@ -1,5 +1,11 @@
 # aioipapi
 
+[![PyPI version](https://img.shields.io/pypi/v/aioipapi.svg)](https://pypi.python.org/pypi/aioipapi)
+[![Build status](https://travis-ci.org/espdev/aioipapi.svg?branch=master)](https://travis-ci.org/espdev/aioipapi)
+[![Coverage Status](https://coveralls.io/repos/github/espdev/aioipapi/badge.svg?branch=master)](https://coveralls.io/github/espdev/aioipapi?branch=master)
+![Supported Python versions](https://img.shields.io/pypi/pyversions/aioipapi.svg)
+[![License](https://img.shields.io/pypi/l/aioipapi.svg)](LICENSE)
+
 Asynchronous asyncio/aiohttp based client for https://ip-api.com IP geolocation API.
 
 **ip-api.com** is a fast, accurate, reliable API service for IP geolocation, 
