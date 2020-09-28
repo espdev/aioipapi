@@ -66,7 +66,7 @@ class _QueryInfo(BaseModel):
         try:
             _Fields(v=v)
         except ValidationError:
-            raise ValueError(f"'fields' must be a sequence or set of strings")
+            raise ValueError("'fields' must be a sequence or set of strings")
         fields = set(v)
         supported_fields = constants.FIELDS | constants.SERVICE_FIELDS
         if not fields.issubset(supported_fields):
@@ -111,7 +111,7 @@ class IpApiClient:
         if fields and not isinstance(fields, (abc.Sequence, abc.Set)):
             raise TypeError("'fields' argument must be a sequence or set")
         if lang and not isinstance(lang, str):
-            raise TypeError(f"'lang' argument must be a string")
+            raise TypeError("'lang' argument must be a string")
         if key and not isinstance(key, str):
             raise TypeError("'key' argument must be a string")
         if session and not isinstance(session, aiohttp.ClientSession):
@@ -211,7 +211,7 @@ class IpApiClient:
         if fields and not isinstance(fields, (abc.Sequence, abc.Set)):
             raise TypeError("'fields' argument must be a sequence or set")
         if lang and not isinstance(lang, str):
-            raise TypeError(f"'lang' argument must be a string")
+            raise TypeError("'lang' argument must be a string")
 
         if batch:
             return await aioitertools.list(self.location_stream(
@@ -256,7 +256,7 @@ class IpApiClient:
         if fields and not isinstance(fields, (abc.Sequence, abc.Set)):
             raise TypeError("'fields' argument must be a sequence or set")
         if lang and not isinstance(lang, str):
-            raise TypeError(f"'lang' argument must be a string")
+            raise TypeError("'lang' argument must be a string")
 
         fields = fields or self._fields
         lang = lang or self._lang
