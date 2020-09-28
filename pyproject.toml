@@ -16,6 +16,9 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
 ]
 
+repository = "https://github.com/espdev/aioipapi"
+documentation = "https://aioipapi.readthedocs.io/en/latest"
+
 [tool.poetry.dependencies]
 python = "^3.6"
 aiohttp = "^3.6.2"
