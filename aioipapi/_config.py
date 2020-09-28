@@ -11,6 +11,7 @@ class Config(BaseModel):
     """
 
     base_url: HttpUrl = 'http://ip-api.com/'
+    pro_url: HttpUrl = 'https://pro.ip-api.com/'
     json_endpoint: str = 'json'
     batch_endpoint: str = 'batch'
     batch_size: conint(strict=True, ge=1) = 100
