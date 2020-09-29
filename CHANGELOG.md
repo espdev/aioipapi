@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.3 (2020-09-29)
+
+- Additional log messages when retrying connection
+- A slight refactoring
+- Update readme
+
+
 ## v0.1.2 (2020-09-29)
 
 - Add the correct pro endpoint (PR [#1](https://github.com/espdev/aioipapi/pull/1))
