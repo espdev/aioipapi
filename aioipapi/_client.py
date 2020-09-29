@@ -418,21 +418,15 @@ async def location(ip: Optional[Union[_IPType, _IPsType]] = None,
 
     """
 
-    client = IpApiClient(
+    async with IpApiClient(
         fields=fields,
         lang=lang,
         key=key,
         session=session,
         retry_attempts=retry_attempts,
         retry_delay=retry_delay
-    )
-
-    try:
-        result = await client.location(ip, timeout=timeout)
-    finally:
-        await client.close()
-
-    return result
+    ) as client:
+        return await client.location(ip, timeout=timeout)
 
 
 async def location_stream(ips: _IPsType,
@@ -463,17 +457,13 @@ async def location_stream(ips: _IPsType,
 
     """
 
-    client = IpApiClient(
+    async with IpApiClient(
         fields=fields,
         lang=lang,
         key=key,
         session=session,
         retry_attempts=retry_attempts,
         retry_delay=retry_delay
-    )
-
-    try:
+    ) as client:
         async for result in client.location_stream(ips, timeout=timeout):
             yield result
-    finally:
-        await client.close()
