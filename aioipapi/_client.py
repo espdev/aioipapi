@@ -5,6 +5,7 @@ from collections import abc
 from ipaddress import IPv4Address, IPv6Address
 from http import HTTPStatus
 import warnings
+import logging
 from typing import Optional, Sequence, Set, List, Dict, Any, Union, Type, Iterable, AsyncIterable
 from types import TracebackType
 
@@ -376,18 +377,28 @@ class IpApiClient:
             reraise=True,
             retry=tenacity.retry_if_exception_type(ClientError),
             stop=tenacity.stop_after_attempt(self._retry_attempts),
-            wait=tenacity.wait_fixed(self._retry_delay)
+            wait=tenacity.wait_fixed(self._retry_delay),
+            after=tenacity.after_log(logger, logging.DEBUG),
         )
 
-        async for attempt in retrying:
-            with attempt:
-                try:
-                    while True:  # retrying loop when "too many requests" without API key
-                        result = await fetch_coro(*coro_args)
-                        if result:
-                            return result
-                except aiohttp.ClientError as err:
-                    raise ClientError(f"Client error: {repr(err)}") from err
+        try:
+            async for attempt in retrying:
+                with attempt:
+                    attempt_number = attempt.retry_state.attempt_number
+                    attempt.retry_state.fn = fetch_coro
+
+                    try:
+                        while True:  # retrying loop when "too many requests" without API key
+                            result = await fetch_coro(*coro_args)
+                            if result:
+                                return result
+                    except aiohttp.ClientError as err:
+                        message = f"Client error: {repr(err)}"
+                        logger.error("(attempt %d/%d) %s", attempt_number, self._retry_attempts, message)
+                        raise ClientError(f"Client error: {repr(err)}") from err
+        except ClientError as err:
+            logger.critical("Client has failed after %d attempts: %s", attempt_number, err)
+            raise
 
 
 async def location(ip: Optional[Union[_IPType, _IPsType]] = None,
