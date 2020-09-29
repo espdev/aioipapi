@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+import aiohttp
 import aioitertools
 
 from aioipapi import IpApiClient
@@ -22,6 +23,21 @@ async def test_client_close():
     with pytest.raises(ValueError):
         async for _ in client.location_stream(['127.0.0.1']):
             pass
+
+
+@pytest.mark.asyncio
+async def test_client_unclosed():
+    client = IpApiClient()
+    assert not client.closed
+    with pytest.warns(ResourceWarning, match=f"Unclosed client session {client!r}"):
+        del client
+
+    async with aiohttp.ClientSession() as session:
+        client = IpApiClient(session=session)
+        assert not client.closed
+        with pytest.warns(None) as record:
+            del client
+        assert len(record) == 0
 
 
 @pytest.mark.asyncio

@@ -4,6 +4,7 @@ import asyncio
 from collections import abc
 from ipaddress import IPv4Address, IPv6Address
 from http import HTTPStatus
+import warnings
 from typing import Optional, Sequence, Set, List, Dict, Any, Union, Type, Iterable, AsyncIterable
 from types import TracebackType
 
@@ -145,6 +146,18 @@ class IpApiClient:
 
         self._retry_attempts = retry_attempts
         self._retry_delay = retry_delay
+
+    def __del__(self):
+        if not self._own_session or self.closed:
+            return
+
+        message = 'Unclosed client session'
+        warnings.warn(f"{message} {self!r}", ResourceWarning, source=self)
+
+        context = {'message': message}
+
+        loop = asyncio.get_event_loop()
+        loop.call_exception_handler(context)
 
     def __enter__(self) -> None:
         raise TypeError("Use 'async with' statement instead")
