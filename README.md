@@ -31,7 +31,7 @@ Use pip for installing:
 pip install -U aioipapi
 ```
 
-## Usage Examples
+## Usage
 
 _All examples are provided for Python 3.7 and above._
 
@@ -159,7 +159,7 @@ async with IpApiClient(key='your-api-key') as client:
     ...
 ```
 
-When API key is set, the package always uses HTTPS for connection with ip-api service.
+When API key is set, the package always uses HTTPS for connection with `pro.ip-api.com`.
 
 ## Free API Rate Limit Control
 
@@ -209,6 +209,38 @@ asyncio.run(location(['8.8.8.8'] * 2000))
 63695 [DEBUG] BATCH API rate limit: rl=12, ttl=59
 63790 [DEBUG] BATCH API rate limit: rl=11, ttl=59
 63894 [DEBUG] BATCH API rate limit: rl=10, ttl=59
+```
+
+## Retrying Connection
+
+The client try to reconnect to the service when networking problems. 
+By default 3 attempts and 1 second between attempts are used. You can change these parameters by `retry_attempts` and
+`retry_delay` parameters:
+
+```python
+from aioipapi import location, location_stream, IpApiClient
+
+...
+
+result = location('8.8.8.8', retry_attempts=2, retry_delay=1.5)
+stream = location_stream(['8.8.8.8', '1.1.1.1'], retry_attempts=2, retry_delay=1.5)
+...
+async with IpApiClient(retry_attempts=2, retry_delay=1.5):
+    ...
+```
+
+Also you can change these parameters in the global config:
+
+```python
+from aioipapi import config, IpApiClient
+
+config.retry_attempts = 2
+config.retry_delay = 1.5
+
+...
+
+async with IpApiClient():
+    ...
 ```
 
 # License
