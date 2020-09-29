@@ -132,6 +132,7 @@ class IpApiClient:
         self._own_session = own_session
 
         self._base_url = yarl.URL(config.base_url)
+        self._pro_url = yarl.URL(config.pro_url)
 
         self._fields = fields
         self._lang = lang
@@ -269,16 +270,17 @@ class IpApiClient:
                 yield result
 
     def _make_url(self, endpoint, fields, lang) -> str:
-        url = self._base_url / endpoint
+        if self._key:
+            url = self._pro_url / endpoint
+            url %= {'key': self._key}
+        else:
+            url = self._base_url / endpoint
 
         if fields:
             fields = set(fields) | constants.SERVICE_FIELDS
             url %= {'fields': ','.join(fields)}
         if lang:
             url %= {'lang': lang}
-        if self._key:
-            url = url.with_scheme('https')
-            url %= {'key': self._key}
 
         return url
 
