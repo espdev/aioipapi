@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aioipapi"
-version = "0.1.1"
+version = "0.1.2"
 description = "Asynchronous aiohttp based client for https://ip-api.com"
 authors = ["Eugene Prilepin <esp.home@gmail.com>"]
 license = "MIT"
